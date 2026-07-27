@@ -1,12 +1,15 @@
-// app/api/fabric-lines/[id]/route.js - VERSIÓN CORREGIDA
+// app/api/fabric-lines/[id]/route.js - VERSIÓN CORREGIDA PARA NEXT.JS 15+
 import { connectDB } from "@/lib/mongodb"
 import FabricLine from "@/lib/models/FabricLine"
-import Fabric from "@/lib/models/Fabric" // IMPORTANTE: Importar también Fabric
+import Fabric from "@/lib/models/Fabric"
 
 export async function GET(request, { params }) {
   try {
+    // Desempaquetar params (Next.js 15+)
+    const { id } = await params
+    
     await connectDB()
-    const fabricLine = await FabricLine.findById(params.id).populate("fabrics")
+    const fabricLine = await FabricLine.findById(id).populate("fabrics")
 
     if (!fabricLine) {
       return Response.json({ 
@@ -27,11 +30,14 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    // Desempaquetar params (Next.js 15+)
+    const { id } = await params
+    
     await connectDB()
     const body = await request.json()
 
     const fabricLine = await FabricLine.findByIdAndUpdate(
-      params.id, 
+      id, 
       body, 
       {
         new: true,
@@ -58,31 +64,49 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    // Desempaquetar params (Next.js 15+)
+    const { id } = await params
+    
+    console.log(`🗑️ Intentando eliminar línea de tela con ID: ${id}`)
+    
     await connectDB()
     
-    // Primero, eliminar todas las telas asociadas
-    await Fabric.deleteMany({ fabricLine: params.id })
+    // Verificar si la línea de tela existe
+    const fabricLine = await FabricLine.findById(id)
     
-    // Luego, eliminar la línea de tela
-    const fabricLine = await FabricLine.findByIdAndDelete(params.id)
-
     if (!fabricLine) {
+      console.log(`❌ Línea de tela no encontrada: ${id}`)
       return Response.json({ 
         success: false, 
         error: "Línea de tela no encontrada" 
       }, { status: 404 })
     }
 
+    console.log(`📦 Línea de tela encontrada: ${fabricLine.name}`)
+    console.log(`📊 Telas asociadas: ${fabricLine.fabrics?.length || 0}`)
+    
+    // Primero, eliminar todas las telas asociadas
+    const deleteFabricsResult = await Fabric.deleteMany({ fabricLine: id })
+    console.log(`🗑️ Telas eliminadas: ${deleteFabricsResult.deletedCount}`)
+    
+    // Luego, eliminar la línea de tela
+    await FabricLine.findByIdAndDelete(id)
+    console.log(`✅ Línea de tela eliminada exitosamente: ${fabricLine.name}`)
+
     return Response.json({ 
       success: true, 
       data: {},
-      message: "Línea de tela y sus telas asociadas eliminadas correctamente"
+      message: "Línea de tela y sus telas asociadas eliminadas correctamente",
+      details: {
+        fabricLineName: fabricLine.name,
+        deletedFabrics: deleteFabricsResult.deletedCount
+      }
     })
   } catch (error) {
-    console.error("DELETE fabric-line error:", error)
+    console.error("❌ DELETE fabric-line error:", error)
     return Response.json({ 
       success: false, 
-      error: error.message 
+      error: error.message || "Error al eliminar la línea de tela"
     }, { status: 500 })
   }
 }

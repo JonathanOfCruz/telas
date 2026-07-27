@@ -1,4 +1,4 @@
-// components/admin/FabricLineForm.jsx - DISEÑO MINIMALISTA
+// components/admin/FabricLineForm.jsx - VERSIÓN CORREGIDA
 "use client"
 
 import { useState } from "react"
@@ -20,29 +20,51 @@ export function FabricLineForm({ existingLine, onSuccess }) {
       const url = existingLine ? `/api/fabric-lines/${existingLine._id}` : "/api/fabric-lines"
       const method = existingLine ? "PUT" : "POST"
 
+      console.log(`📤 Enviando ${method} a ${url}`)
+      console.log(`📦 Datos:`, { name, description })
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description }),
       })
 
+      console.log(`📥 Respuesta - Status: ${res.status}`)
+
       const data = await res.json()
+      console.log(`📄 Datos de respuesta:`, data)
 
       if (!res.ok) {
-        setError(data.error || "Error al guardar")
-        setLoading(false)
-        return
+        throw new Error(data.error || "Error al guardar")
       }
 
+      console.log(`✅ Operación exitosa`)
       setSuccess(existingLine ? "Línea actualizada correctamente" : "Línea creada correctamente")
-      setName("")
-      setDescription("")
-      setTimeout(() => {
-        onSuccess()
-      }, 500)
-    } catch (err) {
-      setError("Error de conexión")
+      
+      // Limpiar formulario solo si es creación
+      if (!existingLine) {
+        setName("")
+        setDescription("")
+      }
+      
+      // Primero desactivar loading
       setLoading(false)
+      
+      // Luego llamar a onSuccess después de un pequeño delay
+      setTimeout(() => {
+        if (onSuccess) {
+          onSuccess()
+        }
+        // Limpiar mensaje de éxito después de un tiempo
+        setTimeout(() => {
+          setSuccess("")
+        }, 2000)
+      }, 500)
+      
+    } catch (err) {
+      console.error("❌ Error:", err)
+      setError(err.message || "Error de conexión")
+      setLoading(false) // Asegurarse de desactivar loading en caso de error
     }
   }
 
@@ -57,6 +79,15 @@ export function FabricLineForm({ existingLine, onSuccess }) {
               </svg>
             </div>
             <div className="text-sm font-medium text-red-800">{error}</div>
+            <button 
+              type="button"
+              onClick={() => setError("")}
+              className="ml-auto text-red-600 hover:text-red-800"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
@@ -70,6 +101,15 @@ export function FabricLineForm({ existingLine, onSuccess }) {
               </svg>
             </div>
             <div className="text-sm font-medium text-green-800">{success}</div>
+            <button 
+              type="button"
+              onClick={() => setSuccess("")}
+              className="ml-auto text-green-600 hover:text-green-800"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
@@ -88,6 +128,7 @@ export function FabricLineForm({ existingLine, onSuccess }) {
               placeholder="Ej: Colección Premium Otoño 2024"
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               required
+              disabled={loading}
             />
             <div className="absolute right-3 top-3">
               <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,6 +148,7 @@ export function FabricLineForm({ existingLine, onSuccess }) {
             placeholder="Describe las características principales, materiales y usos recomendados de esta línea..."
             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none min-h-[120px]"
             rows="4"
+            disabled={loading}
           />
         </div>
       </div>
@@ -124,7 +166,8 @@ export function FabricLineForm({ existingLine, onSuccess }) {
                 setName(existingLine.name)
                 setDescription(existingLine.description)
               }}
-              className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors duration-200"
+              disabled={loading}
+              className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Restablecer
             </button>
@@ -133,7 +176,7 @@ export function FabricLineForm({ existingLine, onSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="group relative px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 overflow-hidden"
+            className="group relative px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 overflow-hidden min-w-[160px]"
           >
             <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
             <div className="relative flex items-center justify-center space-x-2">
